@@ -7,18 +7,52 @@ const Tag = require('../tag/model');
 
 async function index(req, res, next) {
   try {
-    let { limit = 10, skip = 0 } = req.query;
-    let products = await Product.find()
+    let {
+      limit = 10,
+      skip = 0,
+      query = '',
+      category = '',
+      tags = [],
+    } = req.query;
+    let criteria = {};
+
+    // buat query dengan criteria nama tertentu
+    if (query.length) {
+      criteria = {
+        ...criteria,
+        name: { $regex: `${query}`, $options: 'i' },
+      };
+    }
+
+    // buat query dengan category tertentu
+    if (category.length) {
+      category = await Category.findOne({
+        name: { $regex: `${category}` },
+        $options: 'i',
+      });
+      if (category) {
+        criteria = { ...criteria, category: category._id };
+      }
+    }
+
+    // buat query dengan tags tertentu
+    if (tags.length) {
+      tags = await Tag.find({ name: { $in: tags } });
+      criteria = { ...criteria, tags: { $in: tags.map((tag) => tag._id) } };
+    }
+
+    let products = await Product.find(criteria)
       .limit(parseInt(limit))
       .skip(parseInt(skip))
       .populate('category')
       .populate('tags');
 
     let filteredProducts = products.map(
-      ({ _id, name, price, image_url, category, ...product }) => {
+      ({ _id, name, price, image_url, category, tags, ...product }) => {
         return { _id, name, price, image_url, category };
       }
     );
+
     return res.json(filteredProducts);
   } catch (error) {
     next(error);
