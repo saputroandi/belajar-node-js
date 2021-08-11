@@ -4,6 +4,7 @@ dotenv.config();
 
 module.exports = {
   serviceName: process.env.SERVICE_NAME,
+  secretKey: process.env.SECRET_KEY,
 
   dbHost: process.env.DB_HOST,
   dbCluster: process.env.DB_CLUSTER,
