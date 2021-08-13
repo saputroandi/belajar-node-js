@@ -4,6 +4,7 @@ const config = require('../config');
 const Product = require('./model');
 const Category = require('../category/model');
 const Tag = require('../tag/model');
+const { policyFor } = require('../policy');
 
 async function index(req, res, next) {
   try {
@@ -41,6 +42,8 @@ async function index(req, res, next) {
       criteria = { ...criteria, tags: { $in: tags.map((tag) => tag._id) } };
     }
 
+    let count = await Product.find(criteria).countDocuments();
+
     let products = await Product.find(criteria)
       .limit(parseInt(limit))
       .skip(parseInt(skip))
@@ -53,7 +56,8 @@ async function index(req, res, next) {
       }
     );
 
-    return res.json(filteredProducts);
+    // return res.json({data: products, count});
+    return res.json({ data: filteredProducts, count });
   } catch (error) {
     next(error);
   }
@@ -61,6 +65,16 @@ async function index(req, res, next) {
 
 async function store(req, res, next) {
   try {
+    // control who can create product
+    let policy = policyFor(req.user);
+
+    if (!policy.can('create', 'Product')) {
+      return res.json({
+        error: 1,
+        message: `Anda tidak memiliki akses untuk membuat produk`,
+      });
+    }
+
     let payload = req.body;
 
     if (payload.category) {
@@ -130,6 +144,16 @@ async function store(req, res, next) {
 
 async function update(req, res, next) {
   try {
+    // control who can update product
+    let policy = policyFor(req.user);
+
+    if (!policy.can('update', 'Product')) {
+      return res.json({
+        error: 1,
+        message: `Anda tidak memiliki akses untuk mengupdate produk`,
+      });
+    }
+
     let payload = req.body;
 
     if (payload.category) {
@@ -212,6 +236,17 @@ async function update(req, res, next) {
 
 async function destroy(req, res, next) {
   try {
+    // control who can delet product
+    let policy = policyFor(req.user);
+
+    if (!policy.can('delete', 'Product')) {
+      // <-- can delete
+      return res.json({
+        error: 1,
+        message: `Anda tidak memiliki akses untuk menghapus produk`,
+      });
+    }
+
     let product = await Product.findOneAndDelete({ _id: req.params.id });
     let currentImage = `${config.rootPath}/public/upload/${product.image_url}`;
     if (fs.existsSync(currentImage)) {

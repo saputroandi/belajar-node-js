@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt');
 
 const config = require('../config');
 const User = require('../user/model');
+const { getToken } = require('../utils/get-token');
 
 async function register(req, res, next) {
   try {
@@ -62,8 +63,39 @@ async function login(req, res, next) {
   })(req, res, next);
 }
 
+function me(req, res, next) {
+  if (!req.user) {
+    return res.json({
+      error: 1,
+      message: `Your're not login or token expired`,
+    });
+  }
+  return res.json(req.user);
+}
+
+async function logout(req, res, next) {
+  let token = getToken(req);
+  let user = await User.findOneAndUpdate(
+    { token: { $in: [token] } },
+    { $pull: { token } },
+    { useFindAndModify: false }
+  );
+  if (!user || !token) {
+    return res.json({
+      error: 1,
+      message: 'User tidak ditemukan',
+    });
+  }
+  return res.json({
+    error: 0,
+    message: 'Logout berhasil',
+  });
+}
+
 module.exports = {
   register,
   localStrategy,
   login,
+  me,
+  logout,
 };
